@@ -2,10 +2,14 @@ let isRegisterMode = false;
 let CHAT_ID = "general";
 let pollTimer = null;
 
+let oldestMessageId = null;
+let newestMessageId = null;
+let isLoadingHistory = false;
+let hasMoreHistory = true;
+
 const authModal = document.getElementById("authModal");
 const msgArea = document.getElementById("messagesArea");
 
-// Проверка сохраненной сессии
 function init() {
   const token = localStorage.getItem("tg_token");
   const user = localStorage.getItem("tg_username");
@@ -41,7 +45,6 @@ async function handleAuth() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Ошибка авторизации");
 
-    // Сохраняем сессию
     localStorage.setItem("tg_token", data.token);
     localStorage.setItem("tg_username", data.username);
     
@@ -63,55 +66,139 @@ function logout() {
 function openChat(id) {
   CHAT_ID = id;
   document.body.classList.add("in-chat");
-  loadMessages();
+  startChat();
 }
 
 function closeChat() {
   document.body.classList.remove("in-chat");
 }
 
-function startChat() {
-  loadMessages();
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(loadMessages, 1500);
+function renderMessageElement(msg) {
+  const myUser = localStorage.getItem("tg_username");
+  const isMe = msg.sender_id === myUser;
+  const bubble = document.createElement("div");
+  bubble.id = `msg-${msg.id}`;
+  bubble.className = `msg-bubble ${isMe ? "msg-outgoing" : "msg-incoming"}`;
+  bubble.innerHTML = `
+    <span class="msg-sender">${escapeHtml(msg.sender_id)}</span>
+    <span>${escapeHtml(msg.text)}</span>
+    <span class="msg-time">${msg.created_at.slice(11, 16)}</span>
+  `;
+  return bubble;
 }
 
-async function loadMessages() {
+// 1. Первичная загрузка чата
+async function startChat() {
+  msgArea.innerHTML = "";
+  oldestMessageId = null;
+  newestMessageId = null;
+  hasMoreHistory = true;
+  isLoadingHistory = false;
+
   const token = localStorage.getItem("tg_token");
-  const myUser = localStorage.getItem("tg_username");
   if (!token) return;
 
   try {
-    const res = await fetch(`/api/v1/messages/${CHAT_ID}`, {
+    const res = await fetch(`/api/v1/messages/${CHAT_ID}?limit=30`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
     if (res.status === 401) return logout();
     if (!res.ok) return;
 
     const messages = await res.json();
-    const shouldScroll = msgArea.scrollTop + msgArea.clientHeight >= msgArea.scrollHeight - 60;
-    
-    msgArea.innerHTML = "";
-    messages.forEach(msg => {
-      const isMe = msg.sender_id === myUser;
-      const bubble = document.createElement("div");
-      bubble.className = `msg-bubble ${isMe ? "msg-outgoing" : "msg-incoming"}`;
-      bubble.innerHTML = `
-        <span class="msg-sender">${escapeHtml(msg.sender_id)}</span>
-        <span>${escapeHtml(msg.text)}</span>
-        <span class="msg-time">${msg.created_at.slice(11, 16)}</span>
-      `;
-      msgArea.appendChild(bubble);
-    });
-
-    if (shouldScroll) {
+    if (messages.length > 0) {
+      oldestMessageId = messages[0].id;
+      newestMessageId = messages[messages.length - 1].id;
+      
+      const fragment = document.createDocumentFragment();
+      messages.forEach(msg => fragment.appendChild(renderMessageElement(msg)));
+      msgArea.appendChild(fragment);
       msgArea.scrollTop = msgArea.scrollHeight;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollNewMessages, 1500);
+}
+
+// 2. Подгрузка старых сообщений при скролле вверх
+async function loadOlderMessages() {
+  if (isLoadingHistory || !hasMoreHistory || !oldestMessageId) return;
+  isLoadingHistory = true;
+
+  const token = localStorage.getItem("tg_token");
+  try {
+    const res = await fetch(`/api/v1/messages/${CHAT_ID}?limit=30&before_id=${oldestMessageId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+
+    const olderMessages = await res.json();
+    if (olderMessages.length === 0) {
+      hasMoreHistory = false;
+      return;
+    }
+
+    oldestMessageId = olderMessages[0].id;
+
+    // Сохраняем положение скролла, чтобы экран не дёргался
+    const previousHeight = msgArea.scrollHeight;
+    const fragment = document.createDocumentFragment();
+    
+    olderMessages.forEach(msg => fragment.appendChild(renderMessageElement(msg)));
+    msgArea.prepend(fragment);
+
+    // Восстанавливаем позицию скролла
+    msgArea.scrollTop = msgArea.scrollHeight - previousHeight;
+  } catch (err) {
+    console.error("Ошибка загрузки истории:", err);
+  } finally {
+    isLoadingHistory = false;
+  }
+}
+
+// 3. Получение только новых сообщений без перезагрузки всего DOM
+async function pollNewMessages() {
+  const token = localStorage.getItem("tg_token");
+  if (!token || !newestMessageId) return;
+
+  try {
+    const res = await fetch(`/api/v1/messages/${CHAT_ID}?after_id=${newestMessageId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (res.status === 401) return logout();
+    if (!res.ok) return;
+
+    const newMessages = await res.json();
+    if (newMessages.length > 0) {
+      const isNearBottom = msgArea.scrollTop + msgArea.clientHeight >= msgArea.scrollHeight - 80;
+      
+      newMessages.forEach(msg => {
+        if (!document.getElementById(`msg-${msg.id}`)) {
+          msgArea.appendChild(renderMessageElement(msg));
+          newestMessageId = msg.id;
+        }
+      });
+
+      if (isNearBottom) {
+        msgArea.scrollTop = msgArea.scrollHeight;
+      }
     }
   } catch (err) {
     console.error(err);
   }
 }
 
+// Событие скролла для подгрузки истории
+msgArea.addEventListener("scroll", () => {
+  if (msgArea.scrollTop <= 40) {
+    loadOlderMessages();
+  }
+});
+
+// Отправка сообщений
 async function sendMsg() {
   const input = document.getElementById("msgInput");
   const text = input.value.trim();
@@ -128,12 +215,13 @@ async function sendMsg() {
       },
       body: JSON.stringify({ chat_id: CHAT_ID, text: text })
     });
+
     if (res.ok) {
-      await loadMessages();
+      await pollNewMessages();
       msgArea.scrollTop = msgArea.scrollHeight;
     }
   } catch (err) {
-    alert("Не удалось отправить сообщение");
+    alert("Не удалось отправить: " + err.message);
   }
 }
 
