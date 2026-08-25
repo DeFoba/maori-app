@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegram Web Lite</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="sidebar-header">Telegram Core</div>
+    <div class="chat-item">
+      <div class="avatar">G</div>
+      <div class="chat-info">
+        <div class="title">General Chat</div>
+        <div class="subtitle">E2E Encrypted</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-window">
+    <div class="chat-header">General Chat</div>
+    <div class="messages-area" id="messagesArea"></div>
+    <div class="input-bar">
+      <input type="text" id="msgInput" placeholder="Написать сообщение..." onkeydown="if(event.key==='Enter') sendMsg()">
+      <button onclick="sendMsg()">Отправить</button>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
