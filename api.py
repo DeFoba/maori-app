@@ -150,16 +150,60 @@ def send_message(payload: SendMessageRequest, current_user: str = Depends(get_cu
     return {"status": "success", "message_id": msg_id}
 
 @api_router.get("/messages/{chat_id}", response_model=List[MessageResponse])
-def get_chat_messages(chat_id: str, limit: int = 50, current_user: str = Depends(get_current_user)):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id, sender_id, chat_id, encrypted_payload, created_at FROM messages WHERE chat_id = ? ORDER BY id ASC LIMIT ?",
-        (chat_id, limit)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    
+def get_chat_messages(
+    chat_id: str, 
+    limit: int = 30, 
+    before_id: Optional[int] = None, 
+    after_id: Optional[int] = None,
+    current_user: str = Depends(get_current_user)
+):
+    with sqlite3.connect(DB_NAME, timeout=10) as conn:
+        cursor = conn.cursor()
+        
+        # Сценарий 1: Опрос новых входящих сообщений (после after_id)
+        if after_id is not None:
+            cursor.execute(
+                """
+                SELECT id, sender_id, chat_id, encrypted_payload, created_at 
+                FROM messages 
+                WHERE chat_id = ? AND id > ? 
+                ORDER BY id ASC
+                """,
+                (chat_id, after_id)
+            )
+        # Сценарий 2: Подгрузка старых сообщений при скролле вверх (до before_id)
+        elif before_id is not None:
+            cursor.execute(
+                """
+                SELECT id, sender_id, chat_id, encrypted_payload, created_at 
+                FROM (
+                    SELECT id, sender_id, chat_id, encrypted_payload, created_at 
+                    FROM messages 
+                    WHERE chat_id = ? AND id < ? 
+                    ORDER BY id DESC 
+                    LIMIT ?
+                ) ORDER BY id ASC
+                """,
+                (chat_id, before_id, limit)
+            )
+        # Сценарий 3: Первоначальная загрузка последних сообщений чата
+        else:
+            cursor.execute(
+                """
+                SELECT id, sender_id, chat_id, encrypted_payload, created_at 
+                FROM (
+                    SELECT id, sender_id, chat_id, encrypted_payload, created_at 
+                    FROM messages 
+                    WHERE chat_id = ? 
+                    ORDER BY id DESC 
+                    LIMIT ?
+                ) ORDER BY id ASC
+                """,
+                (chat_id, limit)
+            )
+            
+        rows = cursor.fetchall()
+
     decrypted = []
     for row in rows:
         msg_id, sender, c_id, enc_payload, created_at = row
@@ -167,5 +211,15 @@ def get_chat_messages(chat_id: str, limit: int = 50, current_user: str = Depends
             raw_text = CIPHER_SUITE.decrypt(enc_payload.encode("utf-8")).decode("utf-8")
         except Exception:
             raw_text = "[Ошибка расшифровки]"
-        decrypted.append(MessageResponse(id=msg_id, sender_id=sender, chat_id=c_id, text=raw_text, created_at=str(created_at)))
+            
+        decrypted.append(
+            MessageResponse(
+                id=msg_id,
+                sender_id=sender,
+                chat_id=c_id,
+                text=raw_text,
+                created_at=str(created_at)
+            )
+        )
+        
     return decrypted
