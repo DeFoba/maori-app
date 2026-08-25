@@ -1,11 +1,24 @@
-const AUTH_TOKEN = prompt("Введите API Auth Token:", localStorage.getItem("tg_token") || "") || "";
-localStorage.setItem("tg_token", AUTH_TOKEN);
+let AUTH_TOKEN = localStorage.getItem("tg_token");
+if (!AUTH_TOKEN) {
+  AUTH_TOKEN = prompt("Введите API Auth Token:") || "";
+  localStorage.setItem("tg_token", AUTH_TOKEN);
+}
 
 const MY_USER_ID = localStorage.getItem("tg_user") || "user_" + Math.floor(Math.random() * 1000);
 localStorage.setItem("tg_user", MY_USER_ID);
 
-const CHAT_ID = "general";
+let CHAT_ID = "general";
 const msgArea = document.getElementById("messagesArea");
+
+function openChat(id) {
+  CHAT_ID = id;
+  document.body.classList.add("in-chat");
+  loadMessages();
+}
+
+function closeChat() {
+  document.body.classList.remove("in-chat");
+}
 
 async function loadMessages() {
   try {
