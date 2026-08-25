@@ -1,32 +1,30 @@
 import os
 import sqlite3
-from datetime import datetime
 from typing import List
-from fastapi import FastAPI, Header, HTTPException, Depends, status
+from fastapi import APIRouter, Header, HTTPException, Depends, status
 from pydantic import BaseModel
 from cryptography.fernet import Fernet
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
+# Ключи и настройки
+DATA_ENCRYPTION_KEY = os.getenv("DATA_ENCRYPTION_KEY")
+if not DATA_ENCRYPTION_KEY:
+    raise RuntimeError("Не задан DATA_ENCRYPTION_KEY в .env")
 
-# --- Конфигурация и Ключи ---
-# Сгенерируйте один раз: Fernet.generate_key().decode()
-# Хранить строго в переменных окружения на сервере!
-DATA_ENCRYPTION_KEY = os.getenv("DATA_ENCRYPTION_KEY", Fernet.generate_key().decode())
 CIPHER_SUITE = Fernet(DATA_ENCRYPTION_KEY.encode())
-
-# Секретный токен для доступа к API
 AUTH_TOKEN = os.getenv("API_AUTH_TOKEN", "tg-secret-access-token-2026")
 DB_NAME = "messenger.db"
 
-app = FastAPI(title="Telegram-like Secure Messaging Core")
+# Создаем роутер вместо app
+api_router = APIRouter(prefix="/api/v1")
 
-# --- База данных ---
+# Инициализация базы данных
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL;")  # Оптимизация для 1 CPU / RAM
+    cursor.execute("PRAGMA journal_mode=WAL;")
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +39,7 @@ def init_db():
 
 init_db()
 
-# --- Авторизация ---
+# Проверка токена
 def verify_token(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -56,7 +54,7 @@ def verify_token(authorization: str = Header(None)):
         )
     return token
 
-# --- Модели Pydantic ---
+# Схемы
 class SendMessageRequest(BaseModel):
     sender_id: str
     chat_id: str
@@ -69,10 +67,9 @@ class MessageResponse(BaseModel):
     text: str
     created_at: str
 
-# --- Эндпоинты ---
-@app.post("/api/v1/messages/send", status_code=status.HTTP_201_CREATED)
+# Эндпоинты
+@api_router.post("/messages/send", status_code=status.HTTP_201_CREATED)
 def send_message(payload: SendMessageRequest, token: str = Depends(verify_token)):
-    """Принимает открытый текст, шифрует его и сохраняет в БД."""
     encrypted_text = CIPHER_SUITE.encrypt(payload.text.encode("utf-8")).decode("utf-8")
     
     conn = sqlite3.connect(DB_NAME)
@@ -87,9 +84,8 @@ def send_message(payload: SendMessageRequest, token: str = Depends(verify_token)
     
     return {"status": "success", "message_id": msg_id}
 
-@app.get("/api/v1/messages/{chat_id}", response_model=List[MessageResponse])
+@api_router.get("/messages/{chat_id}", response_model=List[MessageResponse])
 def get_chat_messages(chat_id: str, limit: int = 50, token: str = Depends(verify_token)):
-    """Выгружает историю, расшифровывает на лету и отдает авторизованному клиенту."""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute(
@@ -105,7 +101,7 @@ def get_chat_messages(chat_id: str, limit: int = 50, token: str = Depends(verify
         try:
             raw_text = CIPHER_SUITE.decrypt(enc_payload.encode("utf-8")).decode("utf-8")
         except Exception:
-            raw_text = "[Ошибка расшифровки / Поврежденные данные]"
+            raw_text = "[Ошибка расшифровки]"
             
         decrypted_messages.append(
             MessageResponse(
