@@ -5,32 +5,84 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Telegram">
   <title>Telegram Web</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="in-chat">
 
-  <!-- Модалка входа / регистрации -->
-  <div id="authModal">
-    <div class="auth-card">
+  <!-- Окно авторизации -->
+  <div id="authModal" class="modal-overlay" style="display:none;">
+    <div class="card">
       <h2 id="authTitle">Вход в Telegram</h2>
       <input type="text" id="authUsername" placeholder="Имя пользователя" autocomplete="username" autocapitalize="none">
-      <input type="password" id="authPassword" placeholder="Пароль" autocomplete="current-password">
-      <button id="authSubmitBtn" onclick="handleAuth()">Войти</button>
+      <input type="password" id="authPassword" placeholder="Пароль" autocomplete="current-password" style="margin-top:10px;">
+      <button class="primary-btn" id="authSubmitBtn" onclick="handleAuth()">Войти</button>
       <div class="auth-switch" id="authSwitch" onclick="toggleAuthMode()">Нет аккаунта? Зарегистрироваться</div>
     </div>
   </div>
 
+  <!-- Модалка редактирования своего профиля -->
+  <div id="editProfileModal" class="modal-overlay" style="display:none;">
+    <div class="card">
+      <button class="card-close" onclick="closeEditProfile()">✕</button>
+      <h2>Мой профиль</h2>
+      
+      <div class="avatar-upload-wrap" onclick="document.getElementById('avatarFileInput').click()">
+        <img id="myProfileAvatarImg" class="avatar-large" style="display:none;" />
+        <div id="myProfileAvatarPlaceholder" class="avatar-large">U</div>
+        <div class="avatar-overlay-badge">📷</div>
+      </div>
+      <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" onchange="previewAvatar(event)">
+
+      <div class="input-group">
+        <label class="input-label">Логин (неизменяемый)</label>
+        <input type="text" id="editUsername" disabled style="opacity: 0.6;">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Отображаемое имя (Ник)</label>
+        <input type="text" id="editDisplayName" maxlength="30" placeholder="Ваше имя">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Цвет имени в чате</label>
+        <div class="color-picker" id="colorPickerGroup">
+          <div class="color-circle active" style="background:#5288c1;" data-color="#5288c1" onclick="selectColor(this)"></div>
+          <div class="color-circle" style="background:#4fae4e;" data-color="#4fae4e" onclick="selectColor(this)"></div>
+          <div class="color-circle" style="background:#e56555;" data-color="#e56555" onclick="selectColor(this)"></div>
+          <div class="color-circle" style="background:#a667e5;" data-color="#a667e5" onclick="selectColor(this)"></div>
+          <div class="color-circle" style="background:#e59b35;" data-color="#e59b35" onclick="selectColor(this)"></div>
+          <div class="color-circle" style="background:#e5559a;" data-color="#e5559a" onclick="selectColor(this)"></div>
+        </div>
+      </div>
+
+      <button class="primary-btn" onclick="saveProfile()">Сохранить</button>
+      <button class="primary-btn" style="background:none; color:#e53935; margin-top:6px;" onclick="logout()">Выйти из аккаунта</button>
+    </div>
+  </div>
+
+  <!-- Модалка просмотра чужого профиля -->
+  <div id="viewUserModal" class="modal-overlay" style="display:none;">
+    <div class="card">
+      <button class="card-close" onclick="document.getElementById('viewUserModal').style.display='none'">✕</button>
+      <img id="viewUserAvatar" class="avatar-large" style="display:none; margin-bottom:12px;" />
+      <div id="viewUserAvatarPlaceholder" class="avatar-large" style="margin-bottom:12px;">U</div>
+      <h2 id="viewUserDisplayName" style="margin-bottom:4px;">Name</h2>
+      <span id="viewUserLogin" style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">@login</span>
+    </div>
+  </div>
+
   <div class="app-container">
-    <!-- Сайдбар -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <span id="myUsernameDisplay">Telegram</span>
-        <button class="logout-btn" onclick="logout()">Выйти</button>
+        <div class="profile-bar" onclick="openEditProfile()">
+          <img id="myHeaderAvatarImg" class="avatar-small" style="display:none;" />
+          <div id="myHeaderAvatarPlaceholder" class="avatar-small">U</div>
+          <span id="myDisplayNameDisplay" style="font-weight:600; font-size:15px;">Telegram</span>
+        </div>
       </div>
       <div class="chat-item" onclick="openChat('general')">
-        <div class="avatar">G</div>
+        <div class="avatar-small" style="background:#4a89dc;">G</div>
         <div class="chat-info">
           <div class="title">General Chat</div>
           <div class="subtitle">E2E Encrypted</div>
@@ -38,7 +90,6 @@
       </div>
     </aside>
 
-    <!-- Окно чата -->
     <main class="chat-window">
       <header class="chat-header">
         <button class="back-btn" onclick="closeChat()">
@@ -46,7 +97,7 @@
         </button>
         <div class="chat-title-wrap">
           <span class="chat-title">General Chat</span>
-          <span class="chat-status">online</span>
+          <span class="chat-status" style="font-size:12px; color:var(--accent-color);">online</span>
         </div>
       </header>
 
