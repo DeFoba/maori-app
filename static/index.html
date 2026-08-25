@@ -2,31 +2,43 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Telegram Web Lite</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body>
+<body class="in-chat">
 
-  <div class="sidebar">
-    <div class="sidebar-header">Telegram Core</div>
-    <div class="chat-item">
+  <!-- Список чатов -->
+  <aside class="sidebar">
+    <div class="sidebar-header">Telegram</div>
+    <div class="chat-item" onclick="openChat('general')">
       <div class="avatar">G</div>
       <div class="chat-info">
         <div class="title">General Chat</div>
         <div class="subtitle">E2E Encrypted</div>
       </div>
     </div>
-  </div>
+  </aside>
 
-  <div class="chat-window">
-    <div class="chat-header">General Chat</div>
+  <!-- Окно открытого диалога -->
+  <main class="chat-window">
+    <header class="chat-header">
+      <button class="back-btn" onclick="closeChat()" title="Назад">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div class="chat-title-wrap">
+        <span class="chat-title" id="chatTitle">General Chat</span>
+        <span class="chat-status">online</span>
+      </div>
+    </header>
+
     <div class="messages-area" id="messagesArea"></div>
+
     <div class="input-bar">
-      <input type="text" id="msgInput" placeholder="Написать сообщение..." onkeydown="if(event.key==='Enter') sendMsg()">
+      <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off" onkeydown="if(event.key==='Enter') sendMsg()">
       <button onclick="sendMsg()">Отправить</button>
     </div>
-  </div>
+  </main>
 
   <script src="/static/js/app.js"></script>
 </body>
