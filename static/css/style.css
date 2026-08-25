@@ -269,3 +269,38 @@ html, body {
   body.in-chat .chat-window { transform: translateX(0); }
   .back-btn { display: flex; }
 }
+
+/* Мобильная раскладка */
+@media (max-width: 768px) {
+  .sidebar {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    z-index: 1; /* Сайдбар теперь на заднем плане */
+    transform: translateX(0);
+    transition: transform 0.25s ease-out;
+  }
+  
+  .chat-window {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    z-index: 10; /* Окно чата выезжает ПОВЕРХ сайдбара */
+    transform: translateX(100%);
+    transition: transform 0.25s ease-out;
+    box-shadow: -5px 0 25px rgba(0,0,0,0.5); /* Тень для визуального разделения */
+  }
+  
+  body.in-chat .sidebar {
+    transform: translateX(-30%); /* Эффект параллакса: меню слегка уезжает влево */
+  }
+  
+  body.in-chat .chat-window {
+    transform: translateX(0);
+  }
+  
+  .back-btn {
+    display: flex;
+  }
+}
+
