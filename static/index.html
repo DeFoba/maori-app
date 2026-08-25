@@ -3,42 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Telegram Web Lite</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Telegram">
+  <title>Telegram Web</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="in-chat">
 
-  <!-- Список чатов -->
-  <aside class="sidebar">
-    <div class="sidebar-header">Telegram</div>
-    <div class="chat-item" onclick="openChat('general')">
-      <div class="avatar">G</div>
-      <div class="chat-info">
-        <div class="title">General Chat</div>
-        <div class="subtitle">E2E Encrypted</div>
-      </div>
+  <!-- Модалка входа / регистрации -->
+  <div id="authModal">
+    <div class="auth-card">
+      <h2 id="authTitle">Вход в Telegram</h2>
+      <input type="text" id="authUsername" placeholder="Имя пользователя" autocomplete="username" autocapitalize="none">
+      <input type="password" id="authPassword" placeholder="Пароль" autocomplete="current-password">
+      <button id="authSubmitBtn" onclick="handleAuth()">Войти</button>
+      <div class="auth-switch" id="authSwitch" onclick="toggleAuthMode()">Нет аккаунта? Зарегистрироваться</div>
     </div>
-  </aside>
+  </div>
 
-  <!-- Окно открытого диалога -->
-  <main class="chat-window">
-    <header class="chat-header">
-      <button class="back-btn" onclick="closeChat()" title="Назад">
-        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-      </button>
-      <div class="chat-title-wrap">
-        <span class="chat-title" id="chatTitle">General Chat</span>
-        <span class="chat-status">online</span>
+  <div class="app-container">
+    <!-- Сайдбар -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span id="myUsernameDisplay">Telegram</span>
+        <button class="logout-btn" onclick="logout()">Выйти</button>
       </div>
-    </header>
+      <div class="chat-item" onclick="openChat('general')">
+        <div class="avatar">G</div>
+        <div class="chat-info">
+          <div class="title">General Chat</div>
+          <div class="subtitle">E2E Encrypted</div>
+        </div>
+      </div>
+    </aside>
 
-    <div class="messages-area" id="messagesArea"></div>
+    <!-- Окно чата -->
+    <main class="chat-window">
+      <header class="chat-header">
+        <button class="back-btn" onclick="closeChat()">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <div class="chat-title-wrap">
+          <span class="chat-title">General Chat</span>
+          <span class="chat-status">online</span>
+        </div>
+      </header>
 
-    <div class="input-bar">
-      <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off" onkeydown="if(event.key==='Enter') sendMsg()">
-      <button onclick="sendMsg()">Отправить</button>
-    </div>
-  </main>
+      <div class="messages-area" id="messagesArea"></div>
+
+      <div class="input-bar">
+        <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off" onkeydown="if(event.key==='Enter') sendMsg()">
+        <button onclick="sendMsg()">Отправить</button>
+      </div>
+    </main>
+  </div>
 
   <script src="/static/js/app.js"></script>
 </body>
