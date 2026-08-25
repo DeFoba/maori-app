@@ -9,6 +9,16 @@ from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 load_dotenv()
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Монтируем папку static (CSS, JS, картинки)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+def get_index():
+    return FileResponse("static/index.html")
+
 
 # --- Конфигурация и Ключи ---
 # Сгенерируйте один раз: Fernet.generate_key().decode()
