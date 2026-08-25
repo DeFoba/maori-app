@@ -6,6 +6,10 @@ from fastapi import FastAPI, Header, HTTPException, Depends, status
 from pydantic import BaseModel
 from cryptography.fernet import Fernet
 
+from dotenv import load_dotenv
+load_dotenv()
+
+
 # --- Конфигурация и Ключи ---
 # Сгенерируйте один раз: Fernet.generate_key().decode()
 # Хранить строго в переменных окружения на сервере!
